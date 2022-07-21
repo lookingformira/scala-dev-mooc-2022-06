@@ -12,6 +12,6 @@ object App {
 //
 //    println("Hello world")
 
-    println(type_system.v1.foo())
+    list
   }
 }
