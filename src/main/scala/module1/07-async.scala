@@ -311,10 +311,10 @@ object promise{
       val p = Promise[T]
       val timer = new Timer(true)
       val task = new TimerTask {
-        override def run(): Unit = ???
+        override def run(): Unit = p.complete(Try(v))
       }
       timer.schedule(task, timeout)
-      ???
+      p.future
     }
   }
 }
