@@ -23,8 +23,8 @@ object task_futures_sequence {
                      (implicit ex: ExecutionContext): Future[(List[A], List[Throwable])] =
     futures.foldLeft(Future.successful((List.empty[A], List.empty[Throwable]))) {
       (acc, future) =>
-        acc.zipWith(future) {
-          case ((correctValues, exceptions), value) => Try(value) match {
+        future.transform(Try(_)).zipWith(acc) {
+          case (value, (correctValues, exceptions)) => value match {
             case Failure(exception) => (correctValues, (exceptions.toVector :+ exception).toList)
             case Success(value) => ((correctValues.toVector :+ value).toList, exceptions)
           }
