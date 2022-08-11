@@ -1,5 +1,7 @@
 package module1
 
+import module2.implicits.{implicit_conversions, implicit_scopes}
+
 import scala.util.{Failure, Success, Try}
 
 object App {
@@ -59,12 +61,14 @@ object App {
 
    // future.f3
 
-    println(promise.p1.isCompleted)
-    println(promise.f1.isCompleted)
-    promise.p1.complete(Try(10))
-    println(promise.p1.isCompleted)
-    println(promise.f1.isCompleted)
-    promise.f1.foreach(println)
+//    println(promise.p1.isCompleted)
+//    println(promise.f1.isCompleted)
+//    promise.p1.complete(Try(10))
+//    println(promise.p1.isCompleted)
+//    println(promise.f1.isCompleted)
+//    promise.f1.foreach(println)
+
+    implicit_scopes.result
 
     Thread.sleep(4000)
   }
