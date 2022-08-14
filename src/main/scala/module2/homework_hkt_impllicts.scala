@@ -12,8 +12,7 @@ object homework_hkt_impllicts {
    * val r2 = println(tupleF(list1, list2))
    *
    */
-  def tupleF[F[_], A, B](fa: Bindable[F, A], fb: Bindable[F, B]): F[(A, B)] =
-    fa.flatMap(a => fb.map((a, _)))
+  def tupleF[F[_], A, B](fa: Bindable[F, A], fb: Bindable[F, B]): F[(A, B)] = Bindable.tupleBindable(fa, fb)
 
 
   trait Bindable[F[_], A] {
