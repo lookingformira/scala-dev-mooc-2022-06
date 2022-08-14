@@ -10,13 +10,26 @@ object homework_hkt_impllicts{
       *   val r2 = println(tupleF(list1, list2))
       * 
       */
-    def tupleF[F[_], A, B](fa: F[A], fb: F[B]) = ???
-
-
+    def tupleF[F[_], A, B](fa: F[A], fb: F[B])(implicit bindableA: Bindable[F, A], bindableB: Bindable[F, B]): F[(A, B)] =
+      Bindable.tupleBindable(bindableA, bindableB)
     trait Bindable[F[_], A] {
         def map[B](f: A => B): F[B]
         def flatMap[B](f: A => F[B]): F[B]
     }
+  object Bindable {
+    def tupleBindable[F[_], A, B](fa: Bindable[F, A], fb: Bindable[F, B]): F[(A, B)] =
+      fa.flatMap { a => fb.map((a, _)) }
+    implicit def listBindable[A](implicit list: List[A]): Bindable[List, A] = new Bindable[List, A] {
+      override def map[B](f: A => B): List[B] = list.map(f)
+
+      override def flatMap[B](f: A => List[B]): List[B] = list.flatMap(f)
+    }
+    implicit def optBindable[A](implicit option: Option[A]): Bindable[Option, A] = new Bindable[Option, A] {
+      override def map[B](f: A => B): Option[B] = option.map(f)
+
+      override def flatMap[B](f: A => Option[B]): Option[B] = option.flatMap(f)
+    }
+  }
 
 
   val optA: Option[Int] = Some(1)
