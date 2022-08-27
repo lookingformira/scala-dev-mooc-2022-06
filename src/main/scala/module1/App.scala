@@ -1,6 +1,10 @@
 package module1
 
 import module2.implicits.{implicit_conversions, implicit_scopes}
+import module2.validation
+import module2.validation.UserDTO
+import module3.functional_effects
+import module3.functional_effects.functionalProgram.declarativeEncoding.Console
 
 import scala.util.{Failure, Success, Try}
 
@@ -68,8 +72,18 @@ object App {
 //    println(promise.f1.isCompleted)
 //    promise.f1.foreach(println)
 
-    implicit_scopes.result
+//    implicit_scopes.result
 
-    Thread.sleep(4000)
+//    Thread.sleep(4000)
+
+//    println(validation.validateUserDataV2(UserDTO("", "", 30)))
+//    println(validation.validateUserDataI(UserDTO("", "", 30)))
+
+     // val r: () => Unit = functional_effects.functionalProgram.executableEncoding.greet2.run
+
+
+    functional_effects.functionalProgram.declarativeEncoding.interpret(
+       functional_effects.functionalProgram.declarativeEncoding.p2)
+
   }
 }

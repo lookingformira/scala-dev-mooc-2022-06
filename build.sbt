@@ -9,5 +9,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "scala-dev-mooc-2022-06",
     libraryDependencies += scalaTest % Test,
+    libraryDependencies += catsCore,
+    libraryDependencies ++= zio,
     addCompilerPlugin(Dependencies.kindProjector)
   )
