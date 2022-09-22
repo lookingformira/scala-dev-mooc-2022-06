@@ -19,16 +19,26 @@ package object zio_homework {
    * и печатать в когнсоль угадал или нет. Подумайте, на какие наиболее простые эффекты ее можно декомпозировать.
    */
 
+    def loop(number: Int): ZIO[Console, IOException, Unit] =
+      putStrLn("write number from 1 to 3") *> getStrLn.flatMap { choice =>
+        if (choice.toInt == number) putStrLn(s"Bingo! Answer is $number") else putStrLn("false") *> loop(number)
+      }
 
 
-  lazy val guessProgram = ???
+
+  lazy val guessProgram: ZIO[Console with Random, IOException, Unit] = for {
+    randomNumber <- nextIntBetween(1, 4)
+    _ <- loop(randomNumber)
+  } yield ()
 
   /**
    * 2. реализовать функцию doWhile (общего назначения), которая будет выполнять эффект до тех пор, пока его значение в условии не даст true
    * 
    */
 
-  def doWhile = ???
+  def doWhile[R, E, A](effect: ZIO[R, E, A])(condition: A): ZIO[R, E, Unit] = effect.map {
+    value => if (value != condition) doWhile(effect)(condition) else ()
+  }
 
   /**
    * 3. Реализовать метод, который безопасно прочитает конфиг из файла, а в случае ошибки вернет дефолтный конфиг
