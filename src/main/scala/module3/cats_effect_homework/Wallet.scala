@@ -3,6 +3,11 @@ package module3.cats_effect_homework
 import cats.effect.Sync
 import cats.implicits._
 import Wallet._
+import cats.data.NonEmptyList
+
+import java.nio.file.Path
+import java.util
+import scala.collection.mutable
 
 // DSL управления электронным кошельком
 trait Wallet[F[_]] {
@@ -25,8 +30,37 @@ trait Wallet[F[_]] {
 // - java.nio.file.Files.exists
 // - java.nio.file.Paths.get
 final class FileWallet[F[_]: Sync](id: WalletId) extends Wallet[F] {
-  def balance: F[BigDecimal] = ???
-  def topup(amount: BigDecimal): F[Unit] = ???
+
+  import collection.JavaConverters._
+
+  private val strPath = s"$id.txt"
+
+  private def existCondition(id: WalletId): F[Boolean] = for {
+    path <- Sync[F].pure(java.nio.file.Paths.get(strPath))
+    exist <- Sync[F].delay(java.nio.file.Files.exists(path))
+  } yield exist
+  def balance: F[BigDecimal] = for {
+    path <- Sync[F].pure(java.nio.file.Paths.get(strPath))
+    exist <- Sync[F].delay(java.nio.file.Files.exists(path))
+    seq = java.nio.file.Files.readAllLines(path).asScala
+    balanceValue <- if (exist) Sync[F].pure {
+      seq.headOption.map(value => BigDecimal.valueOf(value.toDouble)) match {
+        case Some(value) => value
+        case None => BigDecimal.valueOf(0)
+      }
+    }
+    else Sync[F].raiseError(new Exception(s"Wallet does not exist"))
+  } yield balanceValue
+
+  private def createWallet: F[BigDecimal] = for {
+    path <- Sync[F].pure(java.nio.file.Paths.get(strPath))
+    _ <- Sync[F].delay(java.nio.file.Files.createFile(path))
+  } yield BigDecimal.valueOf(0)
+  def topup(amount: BigDecimal): F[Unit] = for {
+    balanceValue <- balance.orElse(createWallet)
+    _ <- Sync[F].delay(java.nio.file.Files.)
+
+  } yield ()
   def withdraw(amount: BigDecimal): F[Either[WalletError, Unit]] = ???
 }
 
@@ -37,7 +71,7 @@ object Wallet {
   // Здесь нужно использовать обобщенную версию уже пройденного вами метода IO.delay,
   // вызывается она так: Sync[F].delay(...)
   // Тайпкласс Sync из cats-effect описывает возможность заворачивания сайд-эффектов
-  def fileWallet[F[_]: Sync](id: WalletId): F[Wallet[F]] = ???
+  def fileWallet[F[_]: Sync](id: WalletId): F[Wallet[F]] = Sync[F].delay(new FileWallet[F](id))
 
   type WalletId = String
 
