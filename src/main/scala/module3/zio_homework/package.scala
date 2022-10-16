@@ -1,7 +1,10 @@
 package module3
 
-import zio.{Has, Task, ULayer, ZIO, ZLayer}
+import module3.zio_homework.config.load
+import module3.zio_homework.runningTimeService.RunningTimeService
+import zio.{Has, IO, Schedule, Task, UIO, ULayer, URIO, ZIO, ZLayer}
 import zio.clock.{Clock, sleep}
+import zio.config.ReadError
 import zio.console._
 import zio.duration.durationInt
 import zio.macros.accessible
@@ -47,7 +50,7 @@ package object zio_homework {
    */
 
 
-  def loadConfigOrDefault = ???
+  def loadConfigOrDefault: IO[ReadError[String], config.AppConfig] = load
 
 
   /**
@@ -61,12 +64,14 @@ package object zio_homework {
    * 4.1 Создайте эффект, который будет возвращать случайеым образом выбранное число от 0 до 10 спустя 1 секунду
    * Используйте сервис zio Random
    */
-  lazy val eff = ???
+  lazy val eff: URIO[Random with Clock, Int] = nextIntBounded(11).delay(1 second)
+
 
   /**
    * 4.2 Создайте коллукцию из 10 выше описанных эффектов (eff)
    */
-  lazy val effects = ???
+  lazy val effects: URIO[Random with Clock, List[Int]] = ZIO.collectAll(List.fill(10)(eff))
+
 
   
   /**
@@ -75,14 +80,25 @@ package object zio_homework {
    * можно использовать ф-цию printEffectRunningTime, которую мы разработали на занятиях
    */
 
-  lazy val app = ???
+  val sumEff: URIO[Console with Random with Clock, Int] = for {
+    list <- effects
+    sum = list.sum
+    _ <- putStrLn(s"$sum")
+  } yield sum
+
+  lazy val app: URIO[Console with Clock with Random, Int] = zioConcurrency.printEffectRunningTime(sumEff)
 
 
   /**
    * 4.4 Усовершенствуйте программу 4.3 так, чтобы минимизировать время ее выполнения
    */
 
-  lazy val appSpeedUp = ???
+  val sumEffSpeedUp: URIO[Console with Random with Clock, Int] = for {
+    sum <- ZIO.reduceAllPar(eff, List.fill(10)(eff))(_ + _)
+    _ <- putStrLn(s"$sum")
+  } yield sum
+
+  lazy val appSpeedUp: URIO[Console with Random with Clock, Int] = zioConcurrency.printEffectRunningTime(sumEffSpeedUp)
 
 
   /**
@@ -98,13 +114,14 @@ package object zio_homework {
      * 
      */
 
-  lazy val appWithTimeLogg = ???
+  lazy val appWithTimeLogg: ZIO[RunningTimeService with Console with Clock with Random, Nothing, Int] = RunningTimeService.printEffectRunningTime(sumEff)
 
   /**
     * 
     * Подготовьте его к запуску и затем запустите воспользовавшись ZioHomeWorkApp
     */
 
-  lazy val runApp = ???
+
+  lazy val runApp = appWithTimeLogg.provideSomeLayer[Random with Clock with Console](RunningTimeService.live)
   
 }
