@@ -1,5 +1,6 @@
 package module3
 
+import module3.zio_homework.config
 import module3.zio_homework.config.load
 import module3.zio_homework.runningTimeService.RunningTimeService
 import zio.{Has, IO, Schedule, Task, UIO, ULayer, URIO, ZIO, ZLayer}
@@ -39,8 +40,8 @@ package object zio_homework {
    * 
    */
 
-  def doWhile[R, E, A](effect: ZIO[R, E, A])(condition: A): ZIO[R, E, Unit] = effect.map {
-    value => if (value != condition) doWhile(effect)(condition) else ()
+  def doWhile[R, E, A](effect: ZIO[R, E, A])(condition: A): ZIO[R, E, Unit] = effect.flatMap {
+    value => if (value != condition) doWhile(effect)(condition) else ZIO.succeed(())
   }
 
   /**
@@ -50,7 +51,11 @@ package object zio_homework {
    */
 
 
-  def loadConfigOrDefault: IO[ReadError[String], config.AppConfig] = load
+  def loadConfigOrDefault: URIO[Console, config.AppConfig] =
+    load.orElse {
+      val default = config.AppConfig("localhost", "8080")
+      zio.console.putStrLn(default.toString).as(default)
+    }
 
 
   /**
