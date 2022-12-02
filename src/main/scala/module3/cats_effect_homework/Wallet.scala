@@ -35,21 +35,22 @@ final class FileWallet[F[_]: Sync](id: WalletId) extends Wallet[F] {
 
   private val strPath = s"$id.txt"
 
-  private def existCondition(id: WalletId): F[Boolean] = for {
-    path <- Sync[F].pure(java.nio.file.Paths.get(strPath))
-    exist <- Sync[F].delay(java.nio.file.Files.exists(path))
-  } yield exist
+//  private def existCondition(id: WalletId): F[Boolean] = for {
+//    path <- Sync[F].pure(java.nio.file.Paths.get(strPath))
+//    exist <- Sync[F].delay(java.nio.file.Files.exists(path))
+//  } yield exist
   def balance: F[BigDecimal] = for {
     path <- Sync[F].pure(java.nio.file.Paths.get(strPath))
     exist <- Sync[F].delay(java.nio.file.Files.exists(path))
     seq = java.nio.file.Files.readAllLines(path).asScala
-    balanceValue <- if (exist) Sync[F].pure {
-      seq.headOption.map(value => BigDecimal.valueOf(value.toDouble)) match {
-        case Some(value) => value
-        case None => BigDecimal.valueOf(0)
+    balanceValue <-
+      if (exist) Sync[F].pure {
+        seq.headOption.map(value => BigDecimal.valueOf(value.toDouble)) match {
+          case Some(value) => value
+          case None        => BigDecimal.valueOf(0)
+        }
       }
-    }
-    else Sync[F].raiseError(new Exception(s"Wallet does not exist"))
+      else Sync[F].raiseError(new Exception(s"Wallet does not exist"))
   } yield balanceValue
 
   private def createWallet: F[BigDecimal] = for {
@@ -58,10 +59,26 @@ final class FileWallet[F[_]: Sync](id: WalletId) extends Wallet[F] {
   } yield BigDecimal.valueOf(0)
   def topup(amount: BigDecimal): F[Unit] = for {
     balanceValue <- balance.orElse(createWallet)
-    _ <- Sync[F].delay(java.nio.file.Files.)
-
+    _ <- Sync[F].delay(
+      java.nio.file.Files.write(
+        java.nio.file.Paths.get(strPath),
+        (amount + balanceValue).toString().getBytes
+      )
+    )
   } yield ()
-  def withdraw(amount: BigDecimal): F[Either[WalletError, Unit]] = ???
+  def withdraw(amount: BigDecimal): F[Either[WalletError, Unit]] = for {
+    balanceValue <- balance.orElse(createWallet)
+    either <- Sync[F].delay {
+      if (balanceValue < amount) BalanceTooLow.asLeft[Unit]
+      else {
+        java.nio.file.Files.write(
+          java.nio.file.Paths.get(strPath),
+          (balanceValue - amount).toString().getBytes
+        )
+        ()
+      }.asRight[WalletError]
+    }
+  } yield either
 }
 
 object Wallet {
@@ -71,7 +88,8 @@ object Wallet {
   // Здесь нужно использовать обобщенную версию уже пройденного вами метода IO.delay,
   // вызывается она так: Sync[F].delay(...)
   // Тайпкласс Sync из cats-effect описывает возможность заворачивания сайд-эффектов
-  def fileWallet[F[_]: Sync](id: WalletId): F[Wallet[F]] = Sync[F].delay(new FileWallet[F](id))
+  def fileWallet[F[_]: Sync](id: WalletId): F[Wallet[F]] =
+    Sync[F].delay(new FileWallet[F](id))
 
   type WalletId = String
 
