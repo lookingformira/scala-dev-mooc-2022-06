@@ -86,5 +86,5 @@ object UserServiceSpec extends DefaultRunnableSpec{
                 } yield assert(result.length)(equalTo(1)) && assert(result.head.user)(equalTo(users.head)) && 
                     assert(result.head.roles)(equalTo(Set(Role(Manager.code, "Manager"))))
             ) @@ migrate()
-        ).provideCustomLayer(zLayer)  
+        ).provideCustomLayer(zLayer)  @@ sequential
 }
