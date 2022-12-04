@@ -1,5 +1,6 @@
 package module4.homework.dao.repository
 
+import io.getquill.{EntityQuery, Quoted}
 import zio.{Has, ULayer, ZIO, ZLayer}
 import io.getquill.context.ZioJdbc._
 import module4.homework.dao.entity.User
@@ -37,39 +38,60 @@ object UserRepository{
 
     class ServiceImpl extends Service{
 
-        lazy val userSchema = quote {
+        lazy val userSchema: Quoted[EntityQuery[User]] = quote {
             querySchema[User](""""User"""")
         }
 
 
-        lazy val roleSchema = ???
+        lazy val roleSchema: Quoted[EntityQuery[Role]] = quote {
+          querySchema[Role](""""Role"""")
+        }
 
-        lazy val userToRoleSchema = ???
+        lazy val userToRoleSchema: Quoted[EntityQuery[UserToRole]] = quote {
+          querySchema[UserToRole](""""UserToRole"""")
+        }
 
         def findUser(userId: UserId): Result[Option[User]] = run(userSchema.filter(_.id == lift(userId.id)))
           .map(_.headOption)
         
         def createUser(user: User): Result[User] = run(userSchema.insert(lift(user))).as(user)
         
-        def createUsers(users: List[User]): Result[List[User]] = ???
+        def createUsers(users: List[User]): Result[List[User]] =
+          run(quote {
+            liftQuery(users).foreach(e => query[User].insert(e))
+          }).as(users)
+
+        def updateUser(user: User): Result[Unit] = run(userSchema.filter(_.id == lift(user.id)).update(lift(user))).unit
         
-        def updateUser(user: User): Result[Unit] = ???
+        def deleteUser(user: User): Result[Unit] = run(userSchema.filter(_.id == lift(user.id)).delete).unit
         
-        def deleteUser(user: User): Result[Unit] = ???
+        def findByLastName(lastName: String): Result[List[User]] = run(userSchema.filter(_.lastName == lift(lastName)))
         
-        def findByLastName(lastName: String): Result[List[User]] = ???
+        def list(): Result[List[User]] = run(userSchema)
         
-        def list(): Result[List[User]] = ???
+        def userRoles(userId: UserId): Result[List[Role]] = run(
+          for {
+            userToRole <- userToRoleSchema.filter(_.userId == lift(userId.id))
+            role <- roleSchema.join(_.code == userToRole.roleId)
+          } yield role
+        )
         
-        def userRoles(userId: UserId): Result[List[Role]] = ???
+        def insertRoleToUser(roleCode: RoleCode, userId: UserId): Result[Unit] =
+          run(userToRoleSchema.insert(lift(UserToRole(roleCode.code, userId.id)))).unit
+
         
-        def insertRoleToUser(roleCode: RoleCode, userId: UserId): Result[Unit] = ???
+        def listUsersWithRole(roleCode: RoleCode): Result[List[User]] =
+          run(
+            for {
+              role <- roleSchema.filter(_.code == lift(roleCode.code))
+              userWithRole <- userToRoleSchema.join(_.roleId == role.code)
+              user <- userSchema.join(_.id == userWithRole.userId)
+            } yield user
+          )
         
-        def listUsersWithRole(roleCode: RoleCode): Result[List[User]] = ???
-        
-        def findRoleByCode(roleCode: RoleCode): Result[Option[Role]] = ???
+        def findRoleByCode(roleCode: RoleCode): Result[Option[Role]] = run(roleSchema.filter(_.code == lift(roleCode.code))).map(_.headOption)
                 
     }
 
-    val live: ULayer[UserRepository] = ???
+    val live: ULayer[UserRepository] = ZLayer.succeed(new ServiceImpl)
 }

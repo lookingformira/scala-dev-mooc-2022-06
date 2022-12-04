@@ -132,7 +132,7 @@ object UserRepositorySpec extends DefaultRunnableSpec{
 
             ) @@ migrate(),
 
-        ).provideCustomLayer(layer.orDie)  
+        ).provideCustomLayer(layer.orDie)  @@ sequential
 }
 
 // 7c038f1d-4e8c-4c8e-a8ba-dd58b49b62af
