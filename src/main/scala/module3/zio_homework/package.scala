@@ -1,7 +1,11 @@
 package module3
 
-import zio.{Has, Task, ULayer, ZIO, ZLayer}
+import module3.zio_homework.config
+import module3.zio_homework.config.load
+import module3.zio_homework.runningTimeService.RunningTimeService
+import zio.{Has, IO, Schedule, Task, UIO, ULayer, URIO, ZIO, ZLayer}
 import zio.clock.{Clock, sleep}
+import zio.config.ReadError
 import zio.console._
 import zio.duration.durationInt
 import zio.macros.accessible
@@ -19,16 +23,26 @@ package object zio_homework {
    * и печатать в когнсоль угадал или нет. Подумайте, на какие наиболее простые эффекты ее можно декомпозировать.
    */
 
+    def loop(number: Int): ZIO[Console, IOException, Unit] =
+      putStrLn("write number from 1 to 3") *> getStrLn.flatMap { choice =>
+        if (choice.toInt == number) putStrLn(s"Bingo! Answer is $number") else putStrLn("false") *> loop(number)
+      }
 
 
-  lazy val guessProgram = ???
+
+  lazy val guessProgram: ZIO[Console with Random, IOException, Unit] = for {
+    randomNumber <- nextIntBetween(1, 4)
+    _ <- loop(randomNumber)
+  } yield ()
 
   /**
    * 2. реализовать функцию doWhile (общего назначения), которая будет выполнять эффект до тех пор, пока его значение в условии не даст true
    * 
    */
 
-  def doWhile = ???
+  def doWhile[R, E, A](effect: ZIO[R, E, A])(condition: A): ZIO[R, E, Unit] = effect.flatMap {
+    value => if (value != condition) doWhile(effect)(condition) else ZIO.succeed(())
+  }
 
   /**
    * 3. Реализовать метод, который безопасно прочитает конфиг из файла, а в случае ошибки вернет дефолтный конфиг
@@ -37,7 +51,11 @@ package object zio_homework {
    */
 
 
-  def loadConfigOrDefault = ???
+  def loadConfigOrDefault: URIO[Console, config.AppConfig] =
+    load.orElse {
+      val default = config.AppConfig("localhost", "8080")
+      zio.console.putStrLn(default.toString).as(default)
+    }
 
 
   /**
@@ -51,12 +69,14 @@ package object zio_homework {
    * 4.1 Создайте эффект, который будет возвращать случайеым образом выбранное число от 0 до 10 спустя 1 секунду
    * Используйте сервис zio Random
    */
-  lazy val eff = ???
+  lazy val eff: URIO[Random with Clock, Int] = nextIntBounded(11).delay(1 second)
+
 
   /**
    * 4.2 Создайте коллукцию из 10 выше описанных эффектов (eff)
    */
-  lazy val effects = ???
+  lazy val effects: URIO[Random with Clock, List[Int]] = ZIO.collectAll(List.fill(10)(eff))
+
 
   
   /**
@@ -65,14 +85,25 @@ package object zio_homework {
    * можно использовать ф-цию printEffectRunningTime, которую мы разработали на занятиях
    */
 
-  lazy val app = ???
+  val sumEff: URIO[Console with Random with Clock, Int] = for {
+    list <- effects
+    sum = list.sum
+    _ <- putStrLn(s"$sum")
+  } yield sum
+
+  lazy val app: URIO[Console with Clock with Random, Int] = zioConcurrency.printEffectRunningTime(sumEff)
 
 
   /**
    * 4.4 Усовершенствуйте программу 4.3 так, чтобы минимизировать время ее выполнения
    */
 
-  lazy val appSpeedUp = ???
+  val sumEffSpeedUp: URIO[Console with Random with Clock, Int] = for {
+    sum <- ZIO.reduceAllPar(eff, List.fill(10)(eff))(_ + _)
+    _ <- putStrLn(s"$sum")
+  } yield sum
+
+  lazy val appSpeedUp: URIO[Console with Random with Clock, Int] = zioConcurrency.printEffectRunningTime(sumEffSpeedUp)
 
 
   /**
@@ -88,13 +119,14 @@ package object zio_homework {
      * 
      */
 
-  lazy val appWithTimeLogg = ???
+  lazy val appWithTimeLogg: ZIO[RunningTimeService with Console with Clock with Random, Nothing, Int] = RunningTimeService.printEffectRunningTime(sumEff)
 
   /**
     * 
     * Подготовьте его к запуску и затем запустите воспользовавшись ZioHomeWorkApp
     */
 
-  lazy val runApp = ???
+
+  lazy val runApp = appWithTimeLogg.provideSomeLayer[Random with Clock with Console](RunningTimeService.live)
   
 }
